@@ -7,7 +7,7 @@ import java.nio.IntBuffer;
 		private int sourcePort;
 		private int destinationPort;
 		private int sequenceNumber;
-		private int windowSizeOffset;
+		private int data_length;
 		private int rcvWindow;
 		private int checksum;
 		
@@ -17,7 +17,7 @@ import java.nio.IntBuffer;
 		private boolean FIN;
 		
 		public RTPHeader() {
-			this.windowSizeOffset = 0;
+			this.data_length = 0;
 			this.checksum = 0;
 			this.ACK = false;
 			this.SYN = false;
@@ -43,7 +43,7 @@ import java.nio.IntBuffer;
 			this.sourcePort = intBuffer.get(0);
 			this.destinationPort = intBuffer.get(1);
 			this.sequenceNumber = intBuffer.get(2);
-			this.windowSizeOffset = intBuffer.get(3);
+			this.data_length = intBuffer.get(3);
 			this.checksum = intBuffer.get(4);
 			int flagsCombined = intBuffer.get(5);
 			this.rcvWindow = intBuffer.get(6);
@@ -84,7 +84,7 @@ import java.nio.IntBuffer;
 			byteBuffer.putInt(sourcePort);
 			byteBuffer.putInt(destinationPort);
 			byteBuffer.putInt(sequenceNumber);
-			byteBuffer.putInt(windowSizeOffset);
+			byteBuffer.putInt(data_length);
 			byteBuffer.putInt(checksum);
 			
 			//Converts the flags to ints and then utilizes bitshifting and masking to create a binary string for the flag field row in the header.
@@ -136,12 +136,12 @@ import java.nio.IntBuffer;
 			return sequenceNumber;
 		}
 		
-		public void setWindowSizeOffset(int windowSizeOffset) {
-			this.windowSizeOffset = windowSizeOffset;
+		public void setDataLength(int data_length) {
+			this.data_length = data_length;
 		}
 		
-		public int getWindowSizeOffset() {
-			return windowSizeOffset;
+		public int getDataLength() {
+			return data_length;
 		}
 
 		public void setRcvWindow(int rcvWindow) {
@@ -188,7 +188,7 @@ import java.nio.IntBuffer;
 			return "\nSource Port: " + this.getSourcePort()
 					+ "\nDestination Port: " + this.getDestinationPort()
 					+ "\nSequence number: " + this.getSequenceNumber()
-					+ "\nWindow Size offset: " + this.getWindowSizeOffset()
+					+ "\nWindow Size offset: " + this.getDataLength()
 					+ "\nReceiver Window: " + this.getRcvWindow()
 					+ "\nChecksum: " + this.getChecksum()
 					+ "\nACK: " + this.isACK()

@@ -19,6 +19,10 @@ public class RTPPacket {
 	public RTPPacket(int sourcePort, int destinationPort, byte[] data, int rcvWindow) {
 		this.setHeader(new RTPHeader(sourcePort, destinationPort, 0, rcvWindow));
 		this.setData(data);
+		if(data != null) {
+			header.setDataLength(data.length);
+			updateChecksum();
+		}
 	}
 
 	/*
@@ -27,6 +31,10 @@ public class RTPPacket {
 	public RTPPacket(int sourcePort, int destinationPort, int rcvWindow) {
 		this.setHeader(new RTPHeader(sourcePort, destinationPort, 0, rcvWindow));
 		this.setData(data);
+		if(data != null) {
+			header.setDataLength(data.length);
+			updateChecksum();
+		}
 	}
 
 	
@@ -36,6 +44,10 @@ public class RTPPacket {
 	public RTPPacket(RTPHeader header, byte[] data) {
 		this.setHeader(header);
 		this.setData(data);
+		if(data != null) {
+			header.setDataLength(data.length);
+			updateChecksum();
+		}
 	}
 	
 	/*
@@ -49,10 +61,12 @@ public class RTPPacket {
 		//System.out.println("header bytes\n" + Arrays.toString(headerBytes));
 		
 		// Obtains the rest of the bytes that are the packet data.
-		if (packetByteArray.length > 28) {
-			byte[] dataBytes = Arrays.copyOfRange(packetByteArray, 28, packetByteArray.length);
+		int data_length = header.getDataLength();
+		if (packetByteArray.length > 28 && data_length > 0) {
+			byte[] dataBytes = Arrays.copyOfRange(packetByteArray, 28, 28 + data_length);
 			this.setData(dataBytes);
 		}
+		updateChecksum();
 		//System.out.println("data bytes\n" + Arrays.toString(dataBytes));
 		
 
@@ -126,6 +140,10 @@ public class RTPPacket {
 
 	public void setData(byte[] data) {
 		this.data = data;
+		if(data != null) {
+			header.setDataLength(data.length);
+			updateChecksum();
+		}
 	}
 	
 	public String toString(){

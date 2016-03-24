@@ -29,7 +29,8 @@ public class Receiver {
     private int maxWindowsSize; // the max size of windows
     private float lossRate, corruptRate; // the rate of loss and corrupt
     private int rcvWindow;  // receiver windows size
-    private int destinationPort;// the rec port
+    private int sourcePort;// the send port
+    //private int destinationPort;// the rec port
     private InetAddress IPaddress; // the IP address
 
     /**
@@ -48,13 +49,14 @@ public class Receiver {
      * @param sourcePort    the send port
      * @throws SocketException socket exception
      */
-    public Receiver(float lossRate, float corruptRate, int windowSize, int rcvWindow, int destinationPort, InetAddress IPaddress) throws SocketException {
+    public Receiver(float lossRate, float corruptRate, int windowSize, int rcvWindow, DatagramSocket socket, InetAddress IPaddress) throws SocketException {
         this.lossRate = lossRate;
         this.corruptRate = corruptRate;
         this.maxWindowsSize = windowSize;
-        socket = new DatagramSocket(destinationPort);
+        this.socket = socket;
         this.rcvWindow = rcvWindow;
-        this.destinationPort = destinationPort;
+        this.sourcePort = socket.getLocalPort();
+        //this.destinationPort = destinationPort;
         this.isBlock = false;
         this.IPaddress = IPaddress;
     }
@@ -64,16 +66,17 @@ public class Receiver {
      * @param seq // the seq number
      * @param s the log
      */
-    public void write(int seq) {
+    public void write(int seq, String msg) {
         if (log.containsKey(seq)){
            ArrayList<String> arrayList = log.get(seq);
-            arrayList.add(state);
+            arrayList.add(msg);
         }else {
             ArrayList<String> arrayList = new ArrayList<String>();
-            arrayList.add(state);
+            arrayList.add(msg);
             log.put(seq, arrayList);
         }
     }
+
 
     /**
      * receive packets
@@ -91,18 +94,18 @@ public class Receiver {
             isBlock = true;
             RTPPacket rtppacket = getRTPPacket(receivePacket);
             int CurrentSeq = rtppacket.getHeader().getSequenceNumber();
-            int sourcePort = rtppacket.getHeader().getSourcePort();
+            int destinationPort = rtppacket.getHeader().getDestinationPort();
             boolean isLoss = isLoss(CurrentSeq); // if it is loss
             if (isLoss)
                 continue;
-            write(CurrentSeq, State.Received);
+            write(CurrentSeq, "Received");
             Corrupt(receivePacket);
             boolean isCorrupt = isCorrupted(receivePacket); // if it is corrupt
             if (isCorrupt)
                 continue;
             else {
                 ackPacket(CurrentSeq); // ack packet
-                sendAcknowledgement(CurrentSeq, sourcePort); // send acks
+                sendAcknowledgement(CurrentSeq, destinationPort); // send acks
                 adjustWindow(CurrentSeq);// adjust windows
             }
             isBlock = false;
@@ -132,7 +135,7 @@ public class Receiver {
         if (startWindow <= seqNum) {
             if (seqNum - startWindow < maxWindowsSize) {
                 windows[seqNum - startWindow] = ACK;
-                write(seqNum, State.Acked);
+                write(seqNum, "Acked");
             }
         }
     }
@@ -166,7 +169,7 @@ public class Receiver {
     private boolean isLoss(int seq) {
         int rand = random.nextInt(10) + 1;
         if (rand <= lossRate * 10) {
-            write(seq, State.Loss);
+            write(seq, "Loss");
             return true;
         } else
             return false;
@@ -200,37 +203,16 @@ public class Receiver {
      * @param pkt the packet
      * @return true if it is corrected, otherwise false
      */
-    private boolean isCorrupted(DatagramPacket pkt) {
+    private boolean isCorrupted(DatagramPacket rcvpkt) {
+    	byte[] packetbyte = rcvpkt.getData();
+        RTPPacket rtppacket = new RTPPacket(packetbyte); 
         //get checksum from packet
-        int seq = getSeqNum(pkt);
-        String packetString = new String(pkt.getData());
-        int index = packetString.indexOf("Checksum: ") + ("Checksum: ".length());
-        if (index<0)
-            return true;
-        int index2 = packetString.indexOf("Seq:");
-        if (index2<0)
-            return true;
-        String s = packetString.substring(index, index2).trim();
-        if (!isNumeric(s))
-            return true;
-        int checksum = Integer.parseInt(s);
-        String [] dataString = packetString.split("Data: ");
-        if (dataString.length < 2){
-            return true;
-        }
-        //compute checksum
-        byte[] data = dataString[1].getBytes();
-
-        int computedChecksum = 0;
-        for (int i = 0; i < data.length; i++) {
-            computedChecksum += (int) data[i];
-        }
-
+        int seq = rtppacket.getHeader().getSequenceNumber();
         //compare checksums
-        if (computedChecksum == checksum)
+        if (rtppacket.calculateChecksum() == rtppacket.getHeader().getChecksum())
             return false;
         else {
-            write(seq, State.Corrupt);
+            write(seq, "Corrupted");
             return true;
         }
     }
@@ -241,13 +223,13 @@ public class Receiver {
      * @return the ack
      * @throws Exception
      */
-    private void sendAcknowledgement(int seqNum, int sourcePort) throws Exception {
-        RTPHeader header = new RTPHeader(sourcePort, this.destinationPort,seqNum, this.rcvWindow);
+    private void sendAcknowledgement(int seqNum, int destinationPort) throws Exception {
+        RTPHeader header = new RTPHeader(this.sourcePort, destinationPort, seqNum, this.rcvWindow);
         header.setACK(true);
         RTPPacket rtppacket = new RTPPacket(header, null);
         rtppacket.updateChecksum();
         byte[] ackData = rtppacket.getPacketByteArray();
-        DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, IPaddress, sourcePort);
+        DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, IPaddress, destinationPort);
         socket.send(ackPacket);
     }
 }
