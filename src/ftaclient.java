@@ -92,7 +92,7 @@ public class ftaclient {
 					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, 0, 1);
 	        		System.out.println(message);
 	    			while(flag){
-	        		while(output.isEmpty()){
+	        		while(output.isEmpty() && flag){
 					}
 					while(!output.isEmpty()){
 						ArrayList<Object> output_info = output.poll();
@@ -117,6 +117,7 @@ public class ftaclient {
 								fos.write(rtppacket.getData());
 							}
 							fos.close();
+							flag = false;
 						}
 					}
 													
