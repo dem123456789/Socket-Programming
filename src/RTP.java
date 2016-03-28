@@ -550,12 +550,12 @@ public class RTP{
 									}*/
 			    	            	//System.out.println("aaaaaaa" + windowSize+"aaaaaaa" + queue.size());
 			    	            		windowSize.set(Math.min(queue.size(), maxWindowsSize));
-			    	            		windows = new AtomicIntegerArray(windowSize.intValue());
+			    	            		windows = new AtomicIntegerArray(windowSize.get());
 			    	            		for(int i=0;i<windows.length();i++){
 			    	            			windows.set(i, NAK);
 			    	            		}
 
-			    	                for (int i = 0; i < windowSize.intValue(); i++) {
+			    	                for (int i = 0; i < windowSize.get(); i++) {
 			    	                	DatagramPacket udppacket = queue.poll();
 			    	                	if(udppacket != null){
 					    	            		WindowsList.add(udppacket);
@@ -576,7 +576,7 @@ public class RTP{
 			    	            	lock.lock();
 			    	                int emptySpace = 0;
 			    					try {
-			    				        //Thread.sleep(100);
+			    				        Thread.sleep(100);
 			    					        for (int i = 0; i < windows.length(); i++) {
 			    					        	
 			    						            if (windows.get(i) == ACK) {
@@ -602,13 +602,11 @@ public class RTP{
 				    	            		WindowsList.poll();
 			    	                }
 			    	                // merge to new windows
-			    	                for (int i = emptySpace; i < windows.length(); i++) {
-			    	                	System.out.println("merge"+windows.length()+ " " + emptySpace);
+			    	                for (int i = emptySpace; i < windowSize.get(); i++) {
+			    	                	System.out.println("merge "+windowSize.get()+ " " + emptySpace);
 			    	                    newWindows[ping] = windows.get(i);
 			    	                    ping++;
-			    	                }
-			    	                
-			    	                windows = new AtomicIntegerArray(newWindows);
+			    	                }			    	               
 			    	                
 			    	                // send new packet
 			    	                while (emptySpace-- != 0 && !queue.isEmpty()) {
@@ -623,6 +621,8 @@ public class RTP{
 			    							e.printStackTrace();
 			    						}		    	                    
 			    	                }
+			    	                
+			    	                windows = new AtomicIntegerArray(newWindows);
 			    	                // merge windows
 
 			            			//System.out.println(WindowsList.size());
@@ -634,10 +634,11 @@ public class RTP{
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
-				            	windowSize.set(Math.min(queue.size(), maxWindowsSize));
+				            	if(windowSize.get() == 0){
+				            		windowSize.set(Math.min(queue.size(), maxWindowsSize));
+				            	}
 		            		} else {
 			            	}
-
 		            	//System.out.println(queue.size());
 		            	//windowSize.set(Math.min(queue.size(), maxWindowsSize));
 
@@ -753,7 +754,7 @@ public class RTP{
 						    			        			if(windows.get(index) == ACK){
 							    			        			write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Duplicate ACK Packet");
 							    			        		} else {
-							    			        			System.out.println("bbb"+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
+							    			        			System.out.println("bbb "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
 							    				        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: ACK Packet");
 							    			        			windows.set(index, ACK);
 							    			        			System.out.println("nnn"+windows.get(index));
@@ -768,6 +769,7 @@ public class RTP{
 							    				                 }
 							    			        		}
 					    			        			}
+					    			        			//lock.unlock();
 					    		        			break;
 					    			        	} else if(rtpp.getHeader().getSequenceNumber() < seq && rtpp.getHeader().getSourcePort() == fromPort 
 					    			        			&& udpp.getAddress().equals(sourceIP)){
@@ -777,10 +779,11 @@ public class RTP{
 					    			        	}
 					    			        	index++;
 				            			}
+					    			    lock.unlock();
 				    	        	} else {
 				    	        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: No connection Setup");
 				    	        	}
-			    	        		lock.unlock();
+
 			    	        	continue;
 		            } else if(ack == NAK) {
 		            	System.out.println("NAK");
@@ -887,7 +890,7 @@ public class RTP{
      * @throws Exception the exception
      */
     private int adjustWindow() throws Exception {
-        Thread.sleep(100);
+        //Thread.sleep(100);
         int windowMoved = 0;
 	        for (int i = 0; i < windows.length(); i++) {
 	        	
