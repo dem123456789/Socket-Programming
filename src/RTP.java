@@ -43,7 +43,8 @@ public class RTP{
     private final int NAK = 0; // nak
     private int numberOfTimeouts; // the number of timeouts
     private int rcvWindow;  // receiver windows size
-    private int maxWindowsSize; // the limit of windows size
+    private AtomicInteger maxSenderWindowSize = new AtomicInteger(0);
+    private int maxRcvWindowSize;
     //private int destinationPort; // the receive port
     private int sourcePort; // the send port
     // InetAddress destIPaddress; // the IP address
@@ -70,9 +71,10 @@ public class RTP{
     public RTP(int timeout, int rcvWindow, int sourcePort, int destinationPort, InetAddress destIPaddress, boolean ifServer) throws SocketException {
         this.rcvWindow = rcvWindow;
         int windowsSize = (int) Math.ceil(rcvWindow/RTP_PACKET_SIZE);
-    	this.maxWindowsSize = windowsSize;
+        maxSenderWindowSize.set(windowsSize);
+    	maxRcvWindowSize = windowsSize;
         this.timeOut = timeout;
-        windows = new AtomicIntegerArray(maxWindowsSize);
+        windows = new AtomicIntegerArray(maxSenderWindowSize.get());
         if(ifServer){
         	this.socket = new DatagramSocket(sourcePort);
         } else {
@@ -549,7 +551,7 @@ public class RTP{
 										e1.printStackTrace();
 									}*/
 			    	            	//System.out.println("aaaaaaa" + windowSize+"aaaaaaa" + queue.size());
-			    	            		windowSize.set(Math.min(queue.size(), maxWindowsSize));
+			    	            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
 			    	            		windows = new AtomicIntegerArray(windowSize.get());
 			    	            		for(int i=0;i<windows.length();i++){
 			    	            			windows.set(i, NAK);
@@ -635,8 +637,8 @@ public class RTP{
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
-				            	if(windowSize.get() == 0 || windowSize.get()< maxWindowsSize){
-				            		windowSize.set(Math.min(queue.size(), maxWindowsSize));
+				            	if(windowSize.get() == 0 || windowSize.get() < maxSenderWindowSize.get()){
+				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
 				            	}
 		            		} else {
 			            	}
@@ -692,7 +694,7 @@ public class RTP{
 	    		        InetSocketAddress socketAddress = new InetSocketAddress(sourceIP, fromPort);
 		            		if(!connections.containsKey(socketAddress)){
 		    					Integer startWindow = 0;
-		    					Integer[] windows_ack = new Integer[maxWindowsSize];
+		    					Integer[] windows_ack = new Integer[maxRcvWindowSize];
 		    	                Arrays.fill(windows_ack, NAK);
 		    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
 		    	                Integer ifFIN = null;
@@ -726,7 +728,7 @@ public class RTP{
 		    	        	InetSocketAddress socketAddress = new InetSocketAddress(sourceIP, fromPort);
 			            		if(!connections.containsKey(socketAddress)){
 			    					Integer startWindow = 0;
-			    					Integer[] windows_ack = new Integer[maxWindowsSize];
+			    					Integer[] windows_ack = new Integer[maxRcvWindowSize];
 			    	                Arrays.fill(windows_ack, NAK);
 			    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
 			    	                Integer ifFIN = null;
@@ -757,7 +759,10 @@ public class RTP{
 							    			        		} else {
 							    			        			System.out.println("bbb "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
 							    				        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: ACK Packet");
-							    			        			windows.set(index, ACK);
+							    			        			
+							    				        		maxSenderWindowSize.set(rtpp.getHeader().getRcvWindow());
+							    				        		
+							    				        		windows.set(index, ACK);
 							    			        			System.out.println("nnn"+windows.get(index));
 /*							    			        			for(int i=0;i<windows.length();i++){
 							    			        				System.out.println("nnn"+windows.get(i));
@@ -856,7 +861,7 @@ public class RTP{
 										e.printStackTrace();
 									}
 			    	        		if (startWindow <= seq) {
-			    		                if (seq - startWindow < maxWindowsSize) {
+			    		                if (seq - startWindow < maxRcvWindowSize) {
 			    		                	windows_ack[seq - startWindow] = ACK;		                	
 			    		                	write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Data Packet Received");
 			    		                } else {
@@ -867,6 +872,16 @@ public class RTP{
 			    	                	write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Duplicate Data Packet");
 			    	            		continue;
 			    		            }
+			    	        		
+			    	        		//calculate the dynamic receiver's window
+			    	        		int lastAck = 0;
+			    	        		for (int i = 0; i < maxRcvWindowSize; i++){
+			    	        			if (windows_ack[i] == ACK){
+			    	        				lastAck = i;
+			    	        			}
+			    	        		}
+			    	        		rcvWindow = maxRcvWindowSize - lastAck;
+			    	        		
 			    		            //send ack
 			    	                 RTPHeader header = new RTPHeader(sourcePort, fromPort, seq, rcvWindow);
 			    	                 header.setACK(true);
@@ -915,10 +930,10 @@ public class RTP{
 			    	                 //shift window
 			    	                 while (true) {
 			    	                     if (windows_ack[0] == ACK) {
-			    	                         for (int i = 0; i < maxWindowsSize - 1; i++) {
+			    	                         for (int i = 0; i < maxRcvWindowSize - 1; i++) {
 			    	                        	 windows_ack[i] = windows_ack[i + 1];
 			    	                         }
-			    	                         windows_ack[maxWindowsSize - 1] = NAK;
+			    	                         windows_ack[maxRcvWindowSize - 1] = NAK;
 			    	                         startWindow++;
 			    	                         windowConnection.set(0, startWindow);
 			    	                     } else {
