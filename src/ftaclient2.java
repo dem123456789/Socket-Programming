@@ -12,7 +12,7 @@ import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ftaclient {
+public class ftaclient2 {
 
 	private static int timeout = 2000;
 	private static int seq = 0;
@@ -67,7 +67,7 @@ public class ftaclient {
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
 				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get 3251.jpg";
+*/				in = "get 1234.zip";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;
@@ -89,7 +89,7 @@ public class ftaclient {
 					String command = arguments[0];
 
 					byte[] message_byte = message.getBytes();
-					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, seq++, 1);
+					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, 0, 1);
 	        		System.out.println(message);
 	    			while(flag){
 	        		while(output.isEmpty() && flag){

@@ -45,6 +45,7 @@ public class RTPPacket {
 		this.setHeader(header);
 		this.setData(data);
 		if(data != null) {
+			//System.out.println(new String(data));
 			header.setDataLength(data.length);
 			updateChecksum();
 		}

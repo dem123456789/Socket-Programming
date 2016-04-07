@@ -77,13 +77,17 @@ public class ftaserver {
 							}
 							if(command.equals("get")|| command.equals("get-post")){
 								File f = new File(getfilename);
+								if(command.equals("get-post")){
+									postfilenames.put(socketAddress, postfilename_candidate);
+									rtp.pushFilePass(destinationPort, destIPaddress);
+								}
 								if(f.exists() && !f.isDirectory()) { 
-									rtp.pushFiletoQueue(getfilename, destinationPort, destIPaddress);
+									rtp.pushFiletoQueue(getfilename, destinationPort, destIPaddress,0);
 								} else {
 									rtp.pushFilenotFound(destinationPort, destIPaddress);
 								}
 							}
-							if(command.equals("post")|| command.equals("get-post")){
+							if(command.equals("post")){
 								postfilenames.put(socketAddress, postfilename_candidate);
 								rtp.pushFilePass(destinationPort, destIPaddress);
 							}
