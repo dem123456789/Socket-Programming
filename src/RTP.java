@@ -28,8 +28,9 @@ public class RTP{
     private int timeOut; // the time of timeout
     //private int seq = 0; // the seq number of packet
     public boolean isBlock; // if the current packet is sending
-    private ArrayBlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<>(99999); // the large queue for message
-    private ArrayBlockingQueue<ArrayList<Object>> output = new ArrayBlockingQueue<>(99999); // the large queue for message
+    private int MAX_QUEUE_SIZE = 9999999;
+    private ArrayBlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE); // the large queue for message
+    private ArrayBlockingQueue<ArrayList<Object>> output = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE); // the large queue for message
     private ConcurrentLinkedQueue<DatagramPacket> WindowsList; // the window
     private ConcurrentLinkedQueue<InetSocketAddress> connection_candidate = new ConcurrentLinkedQueue<InetSocketAddress>();
     public ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = new ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>>();//the queue have all packet with different state
@@ -195,7 +196,7 @@ public class RTP{
     	return this.sourcePort;
     }
     
-    public void pushFiletoQueue(String postfilename, int destinationPort, InetAddress destIPaddress) throws IOException{
+    public int pushFiletoQueue(String postfilename, int destinationPort, InetAddress destIPaddress, int startSeq) throws IOException{
 
     	byte[] array = Files.readAllBytes(new File(postfilename).toPath());
 		System.out.println("Total length: " + array.length);
@@ -203,13 +204,14 @@ public class RTP{
 		
 		int offset = 0;
 		int packetCounter = 0;
+		int seq = startSeq;
 		while (offset < array.length) {
 			byte[] outputBytes;
 			
 			if(array.length - offset < RTP_PACKET_SIZE ) {
 				outputBytes = new byte[array.length - offset];
 				System.arraycopy(array, offset, outputBytes, 0, array.length - offset);
-				pushToQueue(outputBytes, destinationPort, destIPaddress, packetCounter++, 1);
+				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 1);
 				break;
 			}
 			
@@ -217,12 +219,14 @@ public class RTP{
 			System.arraycopy(array, offset, outputBytes, 0, RTP_PACKET_SIZE);
 			offset += RTP_PACKET_SIZE ;
 			if(array.length - offset == RTP_PACKET_SIZE ) {
-				pushToQueue(outputBytes, destinationPort, destIPaddress, packetCounter++, 1);	
+				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 1);
 			} else {
-				pushToQueue(outputBytes, destinationPort, destIPaddress, packetCounter++, 0);	
+				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 0);	
 			}
 		}
 		System.out.println("Total Packet: " + packetCounter);
+		return startSeq;
+		
     }
  
     public void pushFilenotFound(int destinationPort, InetAddress destIPaddress){
@@ -231,12 +235,7 @@ public class RTP{
     
 
     public void pushFilePass(int destinationPort, InetAddress destIPaddress){
-        RTPHeader header = new RTPHeader(sourcePort, destinationPort, 0, rcvWindow);
-        header.setFIN(true);
-    	RTPPacket rtpp = new RTPPacket(header, "pass".getBytes());
-        rtpp.updateChecksum();
-        byte[] PassData = rtpp.getPacketByteArray();
-		pushToQueue(PassData, destinationPort, destIPaddress, 0, 1);	
+		pushToQueue("pass".getBytes(), destinationPort, destIPaddress, 0, 1);	
     }
     
     public void disconnect(){
@@ -353,7 +352,7 @@ public class RTP{
 					Integer startWindow = 0;
 					Integer[] windows_ack = new Integer[maxWindowsSize];
 	                Arrays.fill(windows_ack, NAK);
-	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
+	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 	                Integer ifFIN = -1;
 	        		ArrayList<Object> windowConnection = new ArrayList<Object>();
 	        		windowConnection.add(startWindow);
@@ -381,7 +380,7 @@ public class RTP{
 					Integer startWindow = 0;
 					Integer[] windows_ack = new Integer[maxWindowsSize];
 	                Arrays.fill(windows_ack, NAK);
-	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
+	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 	                Integer ifFIN = -1;
 	        		ArrayList<Object> windowConnection = new ArrayList<Object>();
 	        		windowConnection.add(startWindow);
@@ -467,7 +466,7 @@ public class RTP{
 	                	 output_arr.add(buffer_rcv);
 	                	 output.put(output_arr);
 	                	 windowConnection.set(3, -1);
-	                	 buffer_rcv = new ArrayBlockingQueue<>(99999);
+	                	 buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 	                	 windowConnection.set(2, buffer_rcv);
 	                 }
 	                 RTPPacket rtpp = new RTPPacket(header, null);
@@ -578,12 +577,13 @@ public class RTP{
 			    	            	lock.lock();
 			    	                int emptySpace = 0;
 			    					try {
+			    						//System.out.println(windows.length());
 			    				        //Thread.sleep(100);
 			    					        for (int i = 0; i < windows.length(); i++) {
 			    					        	
 			    						            if (windows.get(i) == ACK) {
 			    						            	emptySpace++;
-			    						            	System.out.println("adjust"+emptySpace +" "+ windows.length() + " " + windowSize.get());
+			    						            	System.out.println("adjust "+emptySpace +" "+ windows.length() + " " + windowSize.get());
 			    						            } else {
 			    						            	//System.out.println("warning");
 			    						                break;
@@ -637,8 +637,18 @@ public class RTP{
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
+<<<<<<< HEAD
+<<<<<<< HEAD
+				            	if(windowSize.get() == 0 || windowSize.get()< maxRcvWindowSize){
+				            		windowSize.set(Math.min(queue.size(), maxRcvWindowSize));
+=======
 				            	if(windowSize.get() == 0 || windowSize.get() < maxSenderWindowSize.get()){
 				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
+>>>>>>> a2fdcceaf0c745a1ae3f4a1e59945196b9a6db7a
+=======
+				            	if(windowSize.get() == 0 || windowSize.get() < maxSenderWindowSize.get()){
+				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
+>>>>>>> a2fdcceaf0c745a1ae3f4a1e59945196b9a6db7a
 				            	}
 		            		} else {
 			            	}
@@ -696,7 +706,7 @@ public class RTP{
 		    					Integer startWindow = 0;
 		    					Integer[] windows_ack = new Integer[maxRcvWindowSize];
 		    	                Arrays.fill(windows_ack, NAK);
-		    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
+		    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 		    	                Integer ifFIN = null;
 		    	        		ArrayList<Object> windowConnection = new ArrayList<Object>();
 		    	        		windowConnection.add(startWindow);
@@ -730,7 +740,7 @@ public class RTP{
 			    					Integer startWindow = 0;
 			    					Integer[] windows_ack = new Integer[maxRcvWindowSize];
 			    	                Arrays.fill(windows_ack, NAK);
-			    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(99999);
+			    	                ArrayBlockingQueue<DatagramPacket> buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 			    	                Integer ifFIN = null;
 			    	        		ArrayList<Object> windowConnection = new ArrayList<Object>();
 			    	        		windowConnection.add(startWindow);
@@ -911,7 +921,7 @@ public class RTP{
 												e.printStackTrace();
 											}
 				    	                	 windowConnection.set(3, null);
-				    	                	 buffer_rcv = new ArrayBlockingQueue<>(99999);
+				    	                	 buffer_rcv = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 				    	                	 windowConnection.set(2, buffer_rcv);
 				    	                 }
 			    	                 }
