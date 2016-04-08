@@ -637,18 +637,8 @@ public class RTP{
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
-<<<<<<< HEAD
-<<<<<<< HEAD
 				            	if(windowSize.get() == 0 || windowSize.get()< maxRcvWindowSize){
 				            		windowSize.set(Math.min(queue.size(), maxRcvWindowSize));
-=======
-				            	if(windowSize.get() == 0 || windowSize.get() < maxSenderWindowSize.get()){
-				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
->>>>>>> a2fdcceaf0c745a1ae3f4a1e59945196b9a6db7a
-=======
-				            	if(windowSize.get() == 0 || windowSize.get() < maxSenderWindowSize.get()){
-				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
->>>>>>> a2fdcceaf0c745a1ae3f4a1e59945196b9a6db7a
 				            	}
 		            		} else {
 			            	}
