@@ -53,7 +53,7 @@ public class ftaclient {
 			System.out.println("soucePort:" + rtp.getsourcePort()+"\ndestIPaddress:" + Host + "\ndestinationPort:" + Port + "\nrcvWindow:" + rcvWindow);
 			ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 			ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
-			ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
+			//ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
 			rtp.startReceive();
 		
 			rtp.connectionSetup(destinationPort, destIPaddress);				
@@ -62,7 +62,7 @@ public class ftaclient {
 			}
 			System.out.println("Connection Complete");
 			
-			rtp.startSend();
+			//rtp.startSend();
 			boolean flag =true;
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");

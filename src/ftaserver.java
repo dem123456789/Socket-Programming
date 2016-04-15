@@ -17,7 +17,7 @@ public class ftaserver {
 		/*			Scanner reader = new Scanner(System.in);  // Reading from System.in
 		System.out.println("Type your command, pls follow format P W other arguments ");
 		String in = reader.nextLine(); // Scans the next token of the input as an int.
-*/			String in = "8222 5000";
+*/			String in = "8222 8000";
 		String[] arguments = in.split(" ");
 		//arguments = new String[]{"8190", "5000"};
 	       if(arguments.length == 0){
@@ -35,7 +35,7 @@ public class ftaserver {
 				RTP rtp = new RTP(timeout, rcvWindow, sourcePort, 0, null, true);
 				ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 				ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
-				rtp.startSend();
+				//rtp.startSend();
 				rtp.startReceive();
 				while(true){
 						while(output.isEmpty()){
