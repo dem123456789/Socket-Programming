@@ -17,14 +17,11 @@ public class ftaclient {
 	private static int timeout = 2000;
 	private static int seq = 0;
 	public static void main(String[] args) throws Exception {
-		// TODO Auto-generated method stub
 		Scanner reader = new Scanner(System.in);  // Reading from System.in
-		/*			System.out.println("Type your command, pls follow format H:P W other arguments ");
-			String in = reader.nextLine(); // Scans the next token of the input as an int.
-*/		System.out.println("restart");
-		String in = "localhost:8222 5000";
-		String[] arguments = in.split(" ");			
-		
+		System.out.println("Type your command, pls follow format H:P W other arguments ");
+		String in = reader.nextLine(); // Scans the next token of the input as an int.
+		//String in = "localhost:8222 5000";
+		String[] arguments = in.split(" ");					
 		//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
 		if(arguments.length == 0){
 			System.err.println("You do not specify a HOST:PORT number");
@@ -61,67 +58,59 @@ public class ftaclient {
 				
 			}
 			System.out.println("Connection Complete");
-			
-			//rtp.startSend();
-			boolean flag =true;
-
-/*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
-				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get 3251.jpg";
+			while(true) {
+				Scanner r = new Scanner(System.in);  // Reading from System.in
+				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
+				in = r.nextLine(); // Scans the next token of the input as an int.				
+				//in = "get-post 123.zip 1234.zip";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;
 				String postfilename = null;
 				if(arguments[0].equals("disconnect") && arguments.length == 1){
-					
-				} else {
-					if(arguments[0].equals("get") && arguments.length == 2){
-						getfilename = arguments[1];
-					} else if(arguments[0].equals("post") && arguments.length == 2){
-						postfilename = arguments[1];
-					} else if(arguments[0].equals("get-post") && arguments.length == 3) {
-						getfilename = arguments[1];
-						postfilename = arguments[2];
+					System.exit(0);
 					} else {
-						System.err.println("Invalid arguments");
-						System.exit(1);
-					}		
-					String command = arguments[0];
-
-					byte[] message_byte = message.getBytes();
-					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, seq++, 1);
-	        		System.out.println(message);
-	    			while(flag){
-	        		while(output.isEmpty() && flag){
-					}
-					while(!output.isEmpty()){
-						ArrayList<Object> output_info = output.poll();
-						ArrayBlockingQueue<DatagramPacket> data_pkt = (ArrayBlockingQueue<DatagramPacket>) output_info.get(1);							
-						DatagramPacket initial = data_pkt.peek();
-						RTPPacket initial_rtp = rtp.UDP2RTP(initial);
-						if(initial_rtp.getData() == null && initial_rtp.getHeader().isFIN()){
-							System.err.println("File not found");
-							break;
-							//System.exit(1);
-						} else if(new String(initial_rtp.getData()).equals("pass")&& initial_rtp.getHeader().isFIN()){
-							
-							seq = rtp.pushFiletoQueue(postfilename, destinationPort, destIPaddress, seq);						
-
-							break;
+						if(arguments[0].equals("get") && arguments.length == 2){
+							getfilename = arguments[1];
+						} else if(arguments[0].equals("post") && arguments.length == 2){
+							postfilename = arguments[1];
+						} else if(arguments[0].equals("get-post") && arguments.length == 3) {
+							getfilename = arguments[1];
+							postfilename = arguments[2];
 						} else {
-							System.out.println(data_pkt.size());
-							FileOutputStream fos = new FileOutputStream("get_" + getfilename);
-							for(DatagramPacket pkt : data_pkt) {
-								System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
-								RTPPacket rtppacket = rtp.UDP2RTP(pkt);
-								fos.write(rtppacket.getData());
+							System.err.println("Invalid arguments");
+							System.exit(1);
+						}		
+						byte[] message_byte = message.getBytes();
+						rtp.pushToQueue(message_byte, destinationPort, destIPaddress, seq++, 1);
+		        		System.out.println(message);
+		        		while(output.isEmpty()){
+						}
+						while(!output.isEmpty()){
+							ArrayList<Object> output_info = output.poll();
+							ArrayBlockingQueue<DatagramPacket> data_pkt = (ArrayBlockingQueue<DatagramPacket>) output_info.get(1);							
+							DatagramPacket initial = data_pkt.peek();
+							RTPPacket initial_rtp = rtp.UDP2RTP(initial);
+							if(initial_rtp.getData() == null && initial_rtp.getHeader().isFIN()){
+								System.err.println("File not found");
+								break;
+							} else if(new String(initial_rtp.getData()).equals("pass")&& initial_rtp.getHeader().isFIN()){
+								System.out.println("pass");
+								seq = rtp.pushFiletoQueue(postfilename, destinationPort, destIPaddress, seq);						
+	
+								break;
+							} else {
+								System.out.println(data_pkt.size());
+								FileOutputStream fos = new FileOutputStream("get_" + getfilename);
+								for(DatagramPacket pkt : data_pkt) {
+									//System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
+									RTPPacket rtppacket = rtp.UDP2RTP(pkt);
+									fos.write(rtppacket.getData());
+								}
+								fos.close();
 							}
-							fos.close();
-							flag = false;
 						}
 					}
-													
-				}
 			}
 	
 		}

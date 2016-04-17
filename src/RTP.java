@@ -25,28 +25,22 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class RTP{
     private int timeOut; // the time of timeout
-    //private int seq = 0; // the seq number of packet
-    public boolean isBlock; // if the current packet is sending
     private int MAX_QUEUE_SIZE = 9999999;
-
     private ArrayBlockingQueue<ArrayList<Object>> output = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE); // the large queue for message
     private ConcurrentLinkedQueue<InetSocketAddress> connection_candidate = new ConcurrentLinkedQueue<InetSocketAddress>();
     public ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = new ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>>();//the queue have all packet with different state
     private DatagramSocket socket; // the socket
     private Timer timeoutTimer; // the timer to schedule timeout
     private final int RTP_PACKET_SIZE = 1000; // the size of packet
+    private final int RTP_HEADER_SIZE = 28; // the size of packet
     private final int UDP_PACKET_SIZE = 2000; // the size of packet
     public ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = new ConcurrentHashMap<InetSocketAddress, ArrayList<Object>>();
     private final int ACK = 1; // ack
     private final int NAK = 0; // nak
     private int rcvWindow;  // receiver windows size
-    private AtomicInteger maxSenderWindowSize = new AtomicInteger(0);
     private int maxRcvWindowSize;
-    //private int destinationPort; // the receive port
     private int sourcePort; // the send port
-    // InetAddress destIPaddress; // the IP address
     boolean ifServer;
-    Thread Send;
     Thread Receive;
 
     /**
@@ -64,9 +58,8 @@ public class RTP{
      * @throws SocketException // socket exception
      */
     public RTP(int timeout, int rcvWindow, int sourcePort, int destinationPort, InetAddress destIPaddress, boolean ifServer) throws SocketException {
-        this.rcvWindow = rcvWindow;
         int windowsSize = (int) Math.ceil(rcvWindow/RTP_PACKET_SIZE);
-        maxSenderWindowSize.set(windowsSize);
+    	this.rcvWindow = windowsSize;
     	maxRcvWindowSize = windowsSize;
         this.timeOut = timeout;
         //windows = new AtomicIntegerArray(maxSenderWindowSize.get());
@@ -97,6 +90,7 @@ public class RTP{
         		ArrayBlockingQueue<DatagramPacket> queue = (ArrayBlockingQueue<DatagramPacket>) windowConnection.get(8);
 	            RTPPacket rtppacket = new RTPPacket(this.sourcePort, destinationPort, data, this.rcvWindow);
 	            rtppacket.getHeader().setSequenceNumber(seq);
+	            windowConnection.set(11, new AtomicInteger(seq));
 	            boolean fin = (ifFin == 1) ? true : false;
 	            rtppacket.getHeader().setFIN(fin);
 	            rtppacket.updateChecksum();
@@ -118,7 +112,7 @@ public class RTP{
         rtpp.updateChecksum();
         byte[] syndata = rtpp.getPacketByteArray();
         DatagramPacket synPacket = new DatagramPacket(syndata, syndata.length, destIPaddress, destinationPort);
-        Send(synPacket);
+        socket.send(synPacket);
     }
     
     public DatagramPacket RTP2UDP(RTPPacket rtppacket, InetAddress destIPaddress, int destinationPort){
@@ -174,18 +168,12 @@ public class RTP{
         return this.connections;
     }
  
-    /**
-     * return if it is blocked
-     * @return true it is in block, otherwise false;
-     */
     public ArrayBlockingQueue<ArrayList<Object>> getoutPut() {
         return this.output;
     }
  
-    public void startSend(InetSocketAddress socketAddress) {
-    	Send = new Thread(new Send(socketAddress));
-    	Send.start();
-    }
+/*    public void startSend(InetSocketAddress socketAddress) {
+    }*/
     public void startReceive() {
     	Receive = new Thread(new Receive());
     	Receive.start();
@@ -198,29 +186,32 @@ public class RTP{
     public int pushFiletoQueue(String postfilename, int destinationPort, InetAddress destIPaddress, int startSeq) throws IOException{
 
     	byte[] array = Files.readAllBytes(new File(postfilename).toPath());
+    	int RTP_PAYLOAD_SIZE = RTP_PACKET_SIZE - RTP_HEADER_SIZE;
 		System.out.println("Total length: " + array.length);
 		
 		
 		int offset = 0;
 		int packetCounter = 0;
-		int seq = startSeq;
 		while (offset < array.length) {
 			byte[] outputBytes;
 			
-			if(array.length - offset < RTP_PACKET_SIZE ) {
+			if(array.length - offset < RTP_PAYLOAD_SIZE ) {
 				outputBytes = new byte[array.length - offset];
 				System.arraycopy(array, offset, outputBytes, 0, array.length - offset);
 				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 1);
+				packetCounter++;
 				break;
 			}
 			
-			outputBytes = new byte[RTP_PACKET_SIZE];
-			System.arraycopy(array, offset, outputBytes, 0, RTP_PACKET_SIZE);
-			offset += RTP_PACKET_SIZE ;
-			if(array.length - offset == RTP_PACKET_SIZE ) {
+			outputBytes = new byte[RTP_PAYLOAD_SIZE];
+			System.arraycopy(array, offset, outputBytes, 0, RTP_PAYLOAD_SIZE);
+			offset += RTP_PAYLOAD_SIZE ;
+			if(array.length - offset == RTP_PAYLOAD_SIZE ) {
 				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 1);
+				packetCounter++;
 			} else {
 				pushToQueue(outputBytes, destinationPort, destIPaddress, startSeq++, 0);	
+				packetCounter++;
 			}
 		}
 		System.out.println("Total Packet: " + packetCounter);
@@ -228,41 +219,16 @@ public class RTP{
 		
     }
  
-    public void pushFilenotFound(int destinationPort, InetAddress destIPaddress){
-		pushToQueue(null, destinationPort, destIPaddress, 0, 1);	
-    }
     
 
-    public void pushFilePass(int destinationPort, InetAddress destIPaddress){
-		pushToQueue("pass".getBytes(), destinationPort, destIPaddress, 0, 1);	
-    }
     
-    public void disconnect(){
+    public void disconnect(InetSocketAddress socketAddress){
+    	connections.remove(socketAddress);  	
     }
-    /**
-     * Send method use selective repeat
-     */
-    
-    /**
-     * send a packet to client
-     * @param packet the packet
-     * @throws Exception the socket exception
-     */
-    private void Send(DatagramPacket udppacket) throws Exception {
+   
+    private void Send(DatagramPacket udppacket, InetSocketAddress socketAddress) throws Exception {
         socket.send(udppacket);
-        //timeoutTimer.schedule(new PacketTimeout(udppacket), timeOut); // when send a packet, set a timer as well
-    }
-
-    
-
-    
-    
-    /**
-     * return if it is blocked
-     * @return true it is in block, otherwise false;
-     */
-    public boolean isBlock() {
-        return isBlock;
+        timeoutTimer.schedule(new PacketTimeout(udppacket, socketAddress), timeOut); // when send a packet, set a timer as well
     }
 
     /**
@@ -284,15 +250,15 @@ public class RTP{
                     isBlock = false;
                 }*/			
             		ArrayList<Object> windowConnection = connections.get(socketAddress);
+        			((Lock) windowConnection.get(9)).lock();
             		AtomicInteger windowSize = (AtomicInteger) windowConnection.get(5);
 	        		AtomicIntegerArray windows = (AtomicIntegerArray) windowConnection.get(6);
 	        		ConcurrentLinkedQueue<DatagramPacket> WindowsList = (ConcurrentLinkedQueue<DatagramPacket>) windowConnection.get(7);
 	        		ArrayBlockingQueue<DatagramPacket> queue = (ArrayBlockingQueue<DatagramPacket>) windowConnection.get(8);
-	        		Lock lock = (Lock) windowConnection.get(9);
+	        		AtomicInteger maxSenderWindowSize = (AtomicInteger) windowConnection.get(10);
 		            	if(!queue.isEmpty()){
 	            			//System.out.println("wrong1");
-		            			
-			    	            if (windows.length() == 0) { // if it is the first time to send
+			    	            if (windowSize.get() == 0) { // if it is the first time to send
 			    	            	/*try {
 										Thread.sleep(200);
 									} catch (InterruptedException e1) {
@@ -312,7 +278,7 @@ public class RTP{
 					    	            		WindowsList.add(udppacket);
 			    		                    try {
 			    		                    	write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: Initial window sent");
-			    								Send(udppacket);
+			    								Send(udppacket,socketAddress);
 			    					            	//System.out.println(queue.size());	    								
 			    							} catch (Exception e) {
 			    								// TODO Auto-generated catch block
@@ -320,11 +286,10 @@ public class RTP{
 			    							}			    		                    
 			    	                	}                   
 			    	                }
-
 			    	            } else {
-		    						//System.out.println("aaaaaaaaaaaaaaaaaaaaa");			    	            	
+		    						//System.out.println("aaaaaaaaaaaaaaaaaaaaa "+ windows.length());			    	            	
 					            	//System.out.println(queue.size());
-			    	            	lock.lock();
+
 			    	                int emptySpace = 0;
 			    					try {
 			    						//System.out.println(windows.length());
@@ -368,7 +333,7 @@ public class RTP{
 				    	            		WindowsList.add(udppacket);
 			    	                    try {
 			    	                    	write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: sent");
-			    							Send(udppacket);		    							
+			    							Send(udppacket, socketAddress);		    							
 			    						} catch (Exception e) {
 			    							// TODO Auto-generated catch block
 			    							e.printStackTrace();
@@ -380,18 +345,24 @@ public class RTP{
 
 			            			//System.out.println(WindowsList.size());
 			    	            	windowSize.set(WindowsList.size());
-			    	            	lock.unlock();
+
 			    	            }
 /*			                	if(windowSize.intValue() == 0){
 			                		System.out.println("cccc");
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
-				            	if(windowSize.get() == 0 || windowSize.get()< maxRcvWindowSize){
-				            		windowSize.set(Math.min(queue.size(), maxRcvWindowSize));
+				            	if(windowSize.get() == 0 || windowSize.get()< maxSenderWindowSize.get()){
+				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
 				            	}
+		    	                windowConnection.set(5, windowSize);
+		    	                windowConnection.set(6, windows);
+		    	                windowConnection.set(7, WindowsList);
+		    	                windowConnection.set(8, queue);
+
 		            		} else {
 			            	}
+	        			((Lock) windowConnection.get(9)).unlock();
 		            	//System.out.println(queue.size());
 		            	//windowSize.set(Math.min(queue.size(), maxWindowsSize));           	
             }
@@ -425,20 +396,7 @@ public class RTP{
 	    	        int fin = rtppacket.getHeader().isFIN() ? 1 : 0;
 	    	        System.out.println(ack +" " + syn + " " + fin);
 	    			if(rtppacket.getHeader().isSYN() && rtppacket.getHeader().isACK()){
-	    		        RTPHeader header = new RTPHeader(sourcePort, fromPort, 0, rcvWindow);
-	    		        header.setACK(true);
-	    		        RTPPacket rtpp = new RTPPacket(header, null);
-	    		        rtpp.updateChecksum();
-	    		        byte[] ackdata = rtpp.getPacketByteArray();
-	    		        DatagramPacket ackPacket = new DatagramPacket(ackdata, ackdata.length, sourceIP, fromPort);
-	    		        try {
-
-	    	            		socket.send(ackPacket);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-	    		        write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: connection Complete"); 
+	    		        //write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: connection Complete"); 
 	    		        InetSocketAddress socketAddress = new InetSocketAddress(sourceIP, fromPort);
 		            		if(!connections.containsKey(socketAddress)){
 		    					Integer startWindow = 0;
@@ -448,10 +406,14 @@ public class RTP{
 		    	                Integer ifFIN = null;
 		    	                AtomicInteger numberOfTimeouts =  new AtomicInteger(0);
 		    	                AtomicInteger windowSize = new AtomicInteger(0);
-		    	                AtomicIntegerArray windows = new AtomicIntegerArray(windowSize.intValue());
+		    	                AtomicIntegerArray windows = new AtomicIntegerArray(windowSize.get());
 		    	                ConcurrentLinkedQueue<DatagramPacket> WindowsList = new ConcurrentLinkedQueue<DatagramPacket>();
 		    	                ArrayBlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE); // the large queue for message
 		    	                Lock lock = new ReentrantLock();
+		    	                AtomicInteger maxSenderWindowSize = new AtomicInteger(0);
+		    	                maxSenderWindowSize.set(rtppacket.getHeader().getRcvWindow());
+		    	                AtomicInteger sendSeq = new AtomicInteger(-1);
+		    	            	Thread Send = new Thread(new Send(socketAddress));
 		    	                ArrayList<Object> windowConnection = new ArrayList<Object>();
 		    	        		windowConnection.add(startWindow);
 		    	        		windowConnection.add(windows_ack);	
@@ -463,8 +425,24 @@ public class RTP{
 		    	        		windowConnection.add(WindowsList);
 		    	        		windowConnection.add(queue);
 		    	        		windowConnection.add(lock);
+		    	        		windowConnection.add(maxSenderWindowSize);
+		    	        		windowConnection.add(sendSeq);
+			    		        RTPHeader header = new RTPHeader(sourcePort, fromPort, 0, rcvWindow);
+			    		        header.setACK(true);
+			    		        RTPPacket rtpp = new RTPPacket(header, null);
+			    		        rtpp.updateChecksum();
+			    		        byte[] ackdata = rtpp.getPacketByteArray();
+			    		        DatagramPacket ackPacket = new DatagramPacket(ackdata, ackdata.length, sourceIP, fromPort);
+			    		        try {
+
+			    	            		socket.send(ackPacket);
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+		    	            	Send.start();
+		    	        		windowConnection.add(Send);
 		            			connections.put(socketAddress, windowConnection);
-		            			startSend(socketAddress);
 		            		}
 	            		continue;
 	    			} else if(rtppacket.getHeader().isSYN()){
@@ -483,7 +461,7 @@ public class RTP{
 							e.printStackTrace();
 						}
 
-    	            		connection_candidate.add(new InetSocketAddress(sourceIP, fromPort));
+    	            	connection_candidate.add(new InetSocketAddress(sourceIP, fromPort));
 	                    continue;
 	    	        } else if(ack == ACK && connection_candidate.contains(new InetSocketAddress(sourceIP, fromPort))){
 		    	        	InetSocketAddress socketAddress = new InetSocketAddress(sourceIP, fromPort);
@@ -499,6 +477,10 @@ public class RTP{
 			    	                ConcurrentLinkedQueue<DatagramPacket> WindowsList = new ConcurrentLinkedQueue<DatagramPacket>();
 			    	                ArrayBlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE); // the large queue for message
 			    	                Lock lock = new ReentrantLock();
+			    	                AtomicInteger maxSenderWindowSize = new AtomicInteger(0);
+			    	                maxSenderWindowSize.set(rtppacket.getHeader().getRcvWindow());
+			    	                AtomicInteger sendSeq = new AtomicInteger(-1);
+			    	            	Thread Send = new Thread(new Send(socketAddress));
 			    	                ArrayList<Object> windowConnection = new ArrayList<Object>();
 			    	        		windowConnection.add(startWindow);
 			    	        		windowConnection.add(windows_ack);	
@@ -510,33 +492,39 @@ public class RTP{
 			    	        		windowConnection.add(WindowsList);
 			    	        		windowConnection.add(queue);
 			    	        		windowConnection.add(lock);
+			    	        		windowConnection.add(maxSenderWindowSize);
+			    	        		windowConnection.add(sendSeq);
+			    	            	Send.start();
+			    	        		windowConnection.add(Send);
 			            			connections.put(socketAddress, windowConnection);
-			            			startSend(socketAddress);
 			            		}
 		            		connection_candidate.remove(new InetSocketAddress(sourceIP, fromPort));
 		            		continue;
     	        	} else if(ack == ACK) { // if it acked
     	        		System.out.println("kkkkkk");
 		            			InetSocketAddress socketAddress = new InetSocketAddress(sourceIP, fromPort);
-				    	        	if(connections.containsKey(socketAddress)){
+				    	        	if(connections.containsKey(socketAddress)) {
 				    	        		ArrayList<Object> windowConnection = connections.get(socketAddress);
+			    	        			((Lock) windowConnection.get(9)).lock();
 				    	        		AtomicInteger windowSize = (AtomicInteger) windowConnection.get(5);
 				    	        		AtomicIntegerArray windows = (AtomicIntegerArray) windowConnection.get(6);
 				    	        		ConcurrentLinkedQueue<DatagramPacket> WindowsList = (ConcurrentLinkedQueue<DatagramPacket>) windowConnection.get(7);
-				    	        		if(windowSize.get() != 0||windowSize.get() == 0 && fin == 1){
-					    	        		Lock lock = (Lock) windowConnection.get(9);
-					    	        		lock.lock();
+				    	        		AtomicInteger maxSenderWindowSize = (AtomicInteger) windowConnection.get(10);
+			    	        			System.out.println("000 "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq);
+				    	        		//if(windowSize.get() != 0||windowSize.get() == 0 && fin == 1){
+					    	        		System.out.println("aaa "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq);
 					    	        		int index = 0;
 						    			        for (DatagramPacket udpp: WindowsList) {
 						    			        	RTPPacket rtpp = UDP2RTP(udpp);
 						    			        	if(rtpp.getHeader().getSequenceNumber() == seq && rtpp.getHeader().getDestinationPort() == fromPort 
 						    			        			&& udpp.getAddress().equals(sourceIP)){
+						    			        		System.out.println("bbb "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq);
 						    			        			if(windows.length()> index){
 						    			        				System.out.println("kkkkkk2");
 							    			        			if(windows.get(index) == ACK){
 								    			        			write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Duplicate ACK Packet");
 								    			        		} else {
-								    			        			System.out.println("bbb "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
+								    			        			System.out.println("ccc "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
 								    				        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: ACK Packet");
 								    			        			
 								    				        		maxSenderWindowSize.set(rtpp.getHeader().getRcvWindow());
@@ -557,7 +545,7 @@ public class RTP{
 								    				    					        	
 								    				    						            if (windows.get(i) == ACK) {
 								    				    						            	emptySpace++;
-								    				    						            	System.out.println("adjust"+emptySpace +" "+ windows.length() + " " + windowSize.get());
+								    				    						            	System.out.println("adjust "+emptySpace +" "+ windows.length() + " " + windowSize.get());
 								    				    						            } else {
 								    				    						            	//System.out.println("warning");
 								    				    						                break;
@@ -619,8 +607,14 @@ public class RTP{
 						    			        	}
 						    			        	index++;
 					            			}
-						    			    lock.unlock();
-				    	        		}
+/*				    	        		} else {
+					    	        		System.out.println("!!!!!!!!!!!!!!!!!!!!! " + windowSize);
+				    	        		}*/
+				    	                windowConnection.set(5, windowSize);
+				    	                windowConnection.set(6, windows);
+				    	                windowConnection.set(7, WindowsList);
+	    				        		windowConnection.set(10, maxSenderWindowSize);
+			    	        			((Lock) windowConnection.get(9)).unlock();
 				    	        	} else {
 				    	        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: No connection Setup");
 				    	        	}
@@ -643,13 +637,13 @@ public class RTP{
 			    	        		if (startWindow <= seq) {
 			    		                if (seq - startWindow < maxRcvWindowSize) {
 			    		                	windows_ack[seq - startWindow] = ACK;		                	
-			    		                	write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Data Packet Received");
+			    		                	//System.out.println("Receive: Data Packet Received");
 			    		                } else {
-			    		                	write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Data Packet out of window");
+			    		                	System.out.println("Receive: Data Packet out of window" + startWindow + " " + seq);
 			    		                	continue;
 			    		                }
 			    		            } else if(startWindow > seq) {
-			    	                	write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: Duplicate Data Packet");
+			    		            	System.out.println("Receive: Duplicate Data Packet " + startWindow + " " + seq);
 			    	            		continue;
 			    		            }
 			    	        		
@@ -681,6 +675,7 @@ public class RTP{
 				    	                 }
 				    	                 //data ready
 				    	                 if(index ==Fin_seq-startWindow+1){
+				    	                	 System.out.println("data ready");
 				    	                	 ArrayList<Object> output_arr = new ArrayList<>();
 				    	                	 output_arr.add(socketAddress);
 				    	                	 output_arr.add(buffer_rcv);
@@ -757,27 +752,33 @@ public class RTP{
         return windowMoved;
     }*/
 
-/*    *//**
+    /**
      * the timer for packet use to set up the timeout.
-     *//*
+     */
     private class PacketTimeout extends TimerTask {
         private DatagramPacket p;
+        private InetSocketAddress socketAddress;
 
-        public PacketTimeout(DatagramPacket p) {
+        public PacketTimeout(DatagramPacket p, InetSocketAddress socketAddress) {
             this.p = p;
+            this.socketAddress = socketAddress;
         }
-
+        
         public void run() {
             try {
+            	ArrayList<Object> windowConnection = connections.get(socketAddress);
+            	AtomicInteger numberOfTimeouts =  (AtomicInteger) windowConnection.get(4);
+            	ConcurrentLinkedQueue<DatagramPacket> WindowsList = (ConcurrentLinkedQueue<DatagramPacket>) windowConnection.get(7);
                 if (WindowsList.contains(p)) {
                     //if packet has not been ACKed
-                    numberOfTimeouts++;
-                    Send(p);
+                    numberOfTimeouts.incrementAndGet();
+                    Send(p,socketAddress);
                     //write(p.getHeader().getSequenceNumber(), "Resent");
                 }
+                windowConnection.set(4, numberOfTimeouts);
             } catch (Exception e) {
             }
         }
-    }*/
+    }
 
 }

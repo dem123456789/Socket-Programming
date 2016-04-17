@@ -17,13 +17,11 @@ public class dbclientRTP {
 	public static void main(String[] args) throws Exception {
 
 		while(true){
-/*			Scanner reader = new Scanner(System.in);  // Reading from System.in
+			Scanner reader = new Scanner(System.in);  // Reading from System.in
 			System.out.println("Type your command, pls follow format H:P W other arguments ");
 			String in = reader.nextLine(); // Scans the next token of the input as an int.
-*/			System.out.println("restart");
-			String in = "localhost:8222 5000 903076259 first_name last_name";
-			String[] arguments = in.split(" ");			
-			
+			//String in = "localhost:8222 5000 903076259 first_name last_name";
+			String[] arguments = in.split(" ");						
 			//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
 			if(arguments.length == 0){
 				System.err.println("You do not specify a HOST:PORT number");
@@ -55,14 +53,12 @@ public class dbclientRTP {
 				
 				ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 				ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
-				ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
 				rtp.startReceive();
 			
 				rtp.connectionSetup(destinationPort, destIPaddress);
 				while(!connections.containsKey(destsocketAddress)){
 					
 				}
-				rtp.startSend();
 				byte[] message_byte = message.getBytes();
 				rtp.pushToQueue(message_byte, destinationPort, destIPaddress, 0, 1);
         		System.out.println(message);
@@ -77,28 +73,15 @@ public class dbclientRTP {
 							data += new String(rtppacket.getData());
 						}
 						data = data.trim();
-						String [] array = data.split(" ");
 						System.out.println(data);
 					}
-				
-					ArrayList<ArrayList<String>> sequence = log.get(destsocketAddress);
-					if(sequence != null) {
-						for(int i = 0; i < sequence.size(); i++) { 
-							ArrayList<String> msgsequence = sequence.get(i);
-							for(int j = 0; j < msgsequence.size(); j++) { 
-								System.out.println(msgsequence.get(j));
-							}
-						} 
-					}
 			} else {
+				if(arguments[0].equals("disconnect") && arguments.length == 1){
+					System.exit(0);
+				}
 				System.err.println("Not enough arguments");
 				System.exit(1);
 			}
-			try {
-				  Thread.sleep(1000);
-				} catch (InterruptedException ie) {
-				    //Handle exception
-				}
 		}
 		
 	}

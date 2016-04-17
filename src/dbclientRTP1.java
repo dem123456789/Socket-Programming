@@ -10,7 +10,7 @@ import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class dbClientRTP2 {
+public class dbclientRTP1 {
 	
 	private static int timeout = 2000;
 
@@ -21,7 +21,7 @@ public class dbClientRTP2 {
 			System.out.println("Type your command, pls follow format H:P W other arguments ");
 			String in = reader.nextLine(); // Scans the next token of the input as an int.
 */			System.out.println("restart");
-			String in = "localhost:8222 5000 903076259 gpa";
+			String in = "localhost:8222 5000 903076259 first_name last_name";
 			String[] arguments = in.split(" ");			
 			
 			//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
@@ -31,7 +31,7 @@ public class dbClientRTP2 {
 			} else if(arguments.length > 3) {
 				String[] parsedArgument = arguments[0].split(":");
 				if(parsedArgument.length!=2){
-					System.err.println("Wrong formant, please follow HOST:PORT");
+					System.err.println("Wrong format, please follow HOST:PORT");
 					System.exit(1);
 				}
 				String Host = parsedArgument[0];
@@ -44,7 +44,7 @@ public class dbClientRTP2 {
 				Integer destinationPort = Integer.parseInt(Port);
 				InetSocketAddress destsocketAddress = new InetSocketAddress(destIPaddress, destinationPort);
 				int rcvWindow = Integer.parseInt(arguments[1]);	
-				
+			
 				
 				String[] argument = Arrays.copyOfRange(arguments, 2, arguments.length);
 				String message = String.join(" ", argument);
@@ -52,6 +52,7 @@ public class dbClientRTP2 {
 				
 				RTP rtp = new RTP(timeout, rcvWindow, -1, destinationPort, null, false);
 				System.out.println("soucePort:" + rtp.getsourcePort()+"\ndestIPaddress:" + Host + "\ndestinationPort:" + Port + "\nrcvWindow:" + rcvWindow);
+				
 				ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 				ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
 				ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
@@ -61,7 +62,6 @@ public class dbClientRTP2 {
 				while(!connections.containsKey(destsocketAddress)){
 					
 				}
-				rtp.startSend();
 				byte[] message_byte = message.getBytes();
 				rtp.pushToQueue(message_byte, destinationPort, destIPaddress, 0, 1);
         		System.out.println(message);
@@ -90,6 +90,9 @@ public class dbClientRTP2 {
 						} 
 					}
 			} else {
+				if(arguments[0].equals("disconnect") && arguments.length == 1){
+					System.exit(0);
+				}
 				System.err.println("Not enough arguments");
 				System.exit(1);
 			}

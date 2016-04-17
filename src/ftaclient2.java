@@ -53,7 +53,7 @@ public class ftaclient2 {
 			System.out.println("soucePort:" + rtp.getsourcePort()+"\ndestIPaddress:" + Host + "\ndestinationPort:" + Port + "\nrcvWindow:" + rcvWindow);
 			ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 			ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
-			ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
+			//ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
 			rtp.startReceive();
 		
 			rtp.connectionSetup(destinationPort, destIPaddress);				
@@ -62,12 +62,12 @@ public class ftaclient2 {
 			}
 			System.out.println("Connection Complete");
 			
-			rtp.startSend();
+			//rtp.startSend();
 			boolean flag =true;
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
 				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get 1234.zip";
+*/				in = "get-post 3251.zip 3215.zip";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;
@@ -89,7 +89,7 @@ public class ftaclient2 {
 					String command = arguments[0];
 
 					byte[] message_byte = message.getBytes();
-					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, 0, 1);
+					rtp.pushToQueue(message_byte, destinationPort, destIPaddress, seq++, 1);
 	        		System.out.println(message);
 	    			while(flag){
 	        		while(output.isEmpty() && flag){
@@ -104,7 +104,7 @@ public class ftaclient2 {
 							break;
 							//System.exit(1);
 						} else if(new String(initial_rtp.getData()).equals("pass")&& initial_rtp.getHeader().isFIN()){
-							
+							System.out.println("pass");
 							seq = rtp.pushFiletoQueue(postfilename, destinationPort, destIPaddress, seq);						
 
 							break;

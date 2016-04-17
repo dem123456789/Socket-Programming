@@ -6,15 +6,15 @@ import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class dbengineRTP {
+public class dbengineRTP1 {
 	
 	private static int timeout = 2000;
 	
 	public static void main(String args[])throws Exception {
-			Scanner reader = new Scanner(System.in);  // Reading from System.in
+/*			Scanner reader = new Scanner(System.in);  // Reading from System.in
 			System.out.println("Type your command, pls follow format P W other arguments ");
-			String in = reader.nextLine(); // Scans the next token of the input as an int.	
-			//String in = "8222 5000";
+			String in = reader.nextLine(); // Scans the next token of the input as an int.
+*/			String in = "8222 5000";
 			String[] arguments = in.split(" ");
 			//arguments = new String[]{"8190", "5000"};
 		       if(arguments.length == 0){

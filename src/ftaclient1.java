@@ -12,7 +12,7 @@ import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ftaclient5 {
+public class ftaclient1 {
 
 	private static int timeout = 2000;
 	private static int seq = 0;
@@ -53,7 +53,7 @@ public class ftaclient5 {
 			System.out.println("soucePort:" + rtp.getsourcePort()+"\ndestIPaddress:" + Host + "\ndestinationPort:" + Port + "\nrcvWindow:" + rcvWindow);
 			ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 			ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
-			ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
+			//ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
 			rtp.startReceive();
 		
 			rtp.connectionSetup(destinationPort, destIPaddress);				
@@ -62,19 +62,19 @@ public class ftaclient5 {
 			}
 			System.out.println("Connection Complete");
 			
-			rtp.startSend();
+			//rtp.startSend();
 			boolean flag =true;
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
 				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get-post 3251.jpg 1234.zip";
+*/				in = "get 123.jpg";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;
 				String postfilename = null;
 				if(arguments[0].equals("disconnect") && arguments.length == 1){
-					
-				} else {
+					System.exit(0);
+					} else {
 					if(arguments[0].equals("get") && arguments.length == 2){
 						getfilename = arguments[1];
 					} else if(arguments[0].equals("post") && arguments.length == 2){
@@ -99,19 +99,17 @@ public class ftaclient5 {
 						ArrayBlockingQueue<DatagramPacket> data_pkt = (ArrayBlockingQueue<DatagramPacket>) output_info.get(1);							
 						DatagramPacket initial = data_pkt.peek();
 						RTPPacket initial_rtp = rtp.UDP2RTP(initial);
-						String data = new String(initial_rtp.getData());
-						data = data.trim();
 						if(initial_rtp.getData() == null && initial_rtp.getHeader().isFIN()){
 							System.err.println("File not found");
 							break;
 							//System.exit(1);
-						} else if(data.equals("pass")&& initial_rtp.getHeader().isFIN()){
-							
+						} else if(new String(initial_rtp.getData()).equals("pass")&& initial_rtp.getHeader().isFIN()){
+							System.out.println("pass");
 							seq = rtp.pushFiletoQueue(postfilename, destinationPort, destIPaddress, seq);						
 
 							break;
 						} else {
-							System.out.println("client "+ data +" "+data_pkt.size() + " " + initial_rtp.getHeader().isFIN());
+							System.out.println(data_pkt.size());
 							FileOutputStream fos = new FileOutputStream("get_" + getfilename);
 							for(DatagramPacket pkt : data_pkt) {
 								System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());

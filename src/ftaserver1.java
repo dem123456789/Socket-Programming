@@ -5,22 +5,20 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ftaserver {
+public class ftaserver1 {
 
 	private static int timeout = 2000;
 	private static ConcurrentHashMap<InetSocketAddress, String> postfilenames = new ConcurrentHashMap<InetSocketAddress, String>();
 	
 	public static void main(String[] args) throws IOException {
-		Scanner reader = new Scanner(System.in);  // Reading from System.in
+		/*			Scanner reader = new Scanner(System.in);  // Reading from System.in
 		System.out.println("Type your command, pls follow format P W other arguments ");
 		String in = reader.nextLine(); // Scans the next token of the input as an int.
-			
-		//String in = "8222 5000";
+*/			String in = "8222 5000";
 		String[] arguments = in.split(" ");
 		//arguments = new String[]{"8190", "5000"};
 	       if(arguments.length == 0){
@@ -39,11 +37,13 @@ public class ftaserver {
 				ArrayBlockingQueue<ArrayList<Object>> output = rtp.getoutPut();
 				ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
 				//ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
+				//rtp.startSend();
 				rtp.startReceive();
 				while(true){
 						while(output.isEmpty()){
 						}
 						while(!output.isEmpty()){
+							//System.out.println("sent high");
 							ArrayList<Object> output_info = output.poll();
 							InetSocketAddress socketAddress = (InetSocketAddress) output_info.get(0);
 							InetAddress destIPaddress = socketAddress.getAddress();
@@ -86,7 +86,7 @@ public class ftaserver {
 									rtp.pushToQueue("pass".getBytes(), destinationPort, destIPaddress, seq.incrementAndGet(), 1);	
 								}
 								if(f.exists() && !f.isDirectory()) { 
-									seq.set(rtp.pushFiletoQueue(getfilename, destinationPort, destIPaddress,seq.incrementAndGet()) - 1);
+									rtp.pushFiletoQueue(getfilename, destinationPort, destIPaddress,seq.incrementAndGet());
 								} else {
 									rtp.pushToQueue(null, destinationPort, destIPaddress, seq.incrementAndGet(), 1);	
 								}
