@@ -67,7 +67,7 @@ public class ftaclient2 {
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
 				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get-post 3251.zip 3215.zip";
+*/				in = "post 3251.zip";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;

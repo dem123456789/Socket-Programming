@@ -14,13 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ftaclient {
 
-	private static int timeout = 2000;
+	private static int timeout = 10000;
 	private static int seq = 0;
 	public static void main(String[] args) throws Exception {
 		Scanner reader = new Scanner(System.in);  // Reading from System.in
 		System.out.println("Type your command, pls follow format H:P W other arguments ");
 		String in = reader.nextLine(); // Scans the next token of the input as an int.
 		//String in = "localhost:8222 5000";
+		//String in = "130.207.107.13:8222 5000";
 		String[] arguments = in.split(" ");					
 		//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
 		if(arguments.length == 0){
@@ -52,7 +53,6 @@ public class ftaclient {
 			ConcurrentHashMap<InetSocketAddress, ArrayList<Object>> connections = rtp.getConnections();
 			//ConcurrentHashMap<InetSocketAddress, ArrayList<ArrayList<String>>> log = rtp.getLog();
 			rtp.startReceive();
-		
 			rtp.connectionSetup(destinationPort, destIPaddress);				
 			while(!connections.containsKey(destsocketAddress)){
 				
@@ -84,7 +84,9 @@ public class ftaclient {
 						byte[] message_byte = message.getBytes();
 						rtp.pushToQueue(message_byte, destinationPort, destIPaddress, seq++, 1);
 		        		System.out.println(message);
-		        		while(output.isEmpty()){
+		    			boolean flag =true;
+		    			while(flag){
+		        		while(output.isEmpty() && flag){
 						}
 						while(!output.isEmpty()){
 							ArrayList<Object> output_info = output.poll();
@@ -108,8 +110,10 @@ public class ftaclient {
 									fos.write(rtppacket.getData());
 								}
 								fos.close();
+								flag = false;
 							}
 						}
+		    			}
 					}
 			}
 	

@@ -22,7 +22,7 @@ public class ftaclient1 {
 		/*			System.out.println("Type your command, pls follow format H:P W other arguments ");
 			String in = reader.nextLine(); // Scans the next token of the input as an int.
 */		System.out.println("restart");
-		String in = "localhost:8222 5000";
+		String in = "localhost:8222 9000";
 		String[] arguments = in.split(" ");			
 		
 		//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
@@ -67,7 +67,7 @@ public class ftaclient1 {
 
 /*				System.out.println("Type your command, pls follow format get F or post G or get-post F G or disconnect");
 				in = reader.nextLine(); // Scans the next token of the input as an int.
-*/				in = "get 123.jpg";
+*/				in = "get-post 123.zip 3251.zip";
 				arguments = in.split(" ");	
 				String message = String.join(" ", arguments);
 				String getfilename = null;
@@ -112,7 +112,7 @@ public class ftaclient1 {
 							System.out.println(data_pkt.size());
 							FileOutputStream fos = new FileOutputStream("get_" + getfilename);
 							for(DatagramPacket pkt : data_pkt) {
-								System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
+								//System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
 								RTPPacket rtppacket = rtp.UDP2RTP(pkt);
 								fos.write(rtppacket.getData());
 							}

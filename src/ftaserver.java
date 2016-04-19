@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ftaserver {
 
-	private static int timeout = 2000;
+	private static int timeout = 10000;
 	private static ConcurrentHashMap<InetSocketAddress, String> postfilenames = new ConcurrentHashMap<InetSocketAddress, String>();
 	
 	public static void main(String[] args) throws IOException {

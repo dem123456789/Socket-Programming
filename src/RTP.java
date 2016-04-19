@@ -267,6 +267,7 @@ public class RTP{
 									}*/
 			    	            	//System.out.println("aaaaaaa" + windowSize+"aaaaaaa" + queue.size());
 			    	            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
+	    	                			//System.out.println("asdfasdfasdfasdf " + windowSize.get()+ " " + maxSenderWindowSize.get());
 			    	            		windows = new AtomicIntegerArray(windowSize.get());
 			    	            		for(int i=0;i<windows.length();i++){
 			    	            			windows.set(i, NAK);
@@ -277,7 +278,7 @@ public class RTP{
 			    	                	if(udppacket != null){
 					    	            		WindowsList.add(udppacket);
 			    		                    try {
-			    		                    	write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: Initial window sent");
+			    		                    	//write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: Initial window sent");
 			    								Send(udppacket,socketAddress);
 			    					            	//System.out.println(queue.size());	    								
 			    							} catch (Exception e) {
@@ -327,18 +328,23 @@ public class RTP{
 			    	                }			    	               
 			    	                
 			    	                // send new packet
-			    	                while (emptySpace != 0 && !queue.isEmpty()) {
-			    	                	emptySpace = emptySpace -1;
+			    	                int empty = windowSize.get() - WindowsList.size()-1;
+
+		    	                //System.out.println("asdasdasdasd " + windowSize.get() +" " +maxSenderWindowSize.get()+" " + WindowsList.size());
+			    	                while (empty >= 0 && !queue.isEmpty()) {
+			    	                	
+			    	                	empty = empty -1;
 			    	                	DatagramPacket udppacket = queue.poll();
 				    	            		WindowsList.add(udppacket);
 			    	                    try {
-			    	                    	write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: sent");
+			    	                    	//write(new InetSocketAddress(udppacket.getAddress(), udppacket.getPort()), UDP2RTP(udppacket).getHeader().getSequenceNumber(), "Send: sent");
 			    							Send(udppacket, socketAddress);		    							
 			    						} catch (Exception e) {
 			    							// TODO Auto-generated catch block
 			    							e.printStackTrace();
 			    						}		    	                    
 			    	                }
+			    	                
 			    	                //System.out.println("merge "+windowSize.get()+ " " + emptySpace + " " + newWindows.length);
 			    	                windows = new AtomicIntegerArray(newWindows);
 			    	                // merge windows
@@ -352,9 +358,12 @@ public class RTP{
 			    	                windowSize.set(Math.min(queue.size(), maxWindowsSize));
 			                	}*/
 			            	
-				            	if(windowSize.get() == 0 || windowSize.get()< maxSenderWindowSize.get()){
-				            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
-				            	}
+				            	
+			            		//System.out.println("asdasdasdasd " + windowSize.get() +" " + WindowsList.size());
+
+			            		windowSize.set(Math.min(queue.size(), maxSenderWindowSize.get()));
+
+				            	
 		    	                windowConnection.set(5, windowSize);
 		    	                windowConnection.set(6, windows);
 		    	                windowConnection.set(7, WindowsList);
@@ -527,7 +536,8 @@ public class RTP{
 								    			        			System.out.println("ccc "+windowSize+" "+WindowsList.size()+" "+windows.length()+" "+seq+" "+rtpp.getHeader().getSequenceNumber()+" "+index);
 								    				        		write(new InetSocketAddress(rcvpacket.getAddress(), rcvpacket.getPort()), rtppacket.getHeader().getSequenceNumber(), "Receive: ACK Packet");
 								    			        			
-								    				        		maxSenderWindowSize.set(rtpp.getHeader().getRcvWindow());
+								    				        		//System.out.println(rtppacket.getHeader().getRcvWindow());
+								    				        		maxSenderWindowSize.set(rtppacket.getHeader().getRcvWindow());
 								    				        		
 								    				        		windows.set(index, ACK);
 								    			        			System.out.println("nnn"+windows.get(index));
@@ -628,15 +638,15 @@ public class RTP{
 			    	        		Integer startWindow = (Integer) windowConnection.get(0);
 			    	        		Integer[] windows_ack = (Integer[]) windowConnection.get(1);
 			    					ArrayBlockingQueue<DatagramPacket> buffer_rcv = (ArrayBlockingQueue<DatagramPacket>) windowConnection.get(2);
-			    	        		try {
-										buffer_rcv.put(rcvpacket);
-									} catch (InterruptedException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
-			    	        		if (startWindow <= seq) {
+			    					if (startWindow <= seq) {
 			    		                if (seq - startWindow < maxRcvWindowSize) {
-			    		                	windows_ack[seq - startWindow] = ACK;		                	
+			    		                	windows_ack[seq - startWindow] = ACK;	
+					    	        		try {
+												buffer_rcv.put(rcvpacket);
+											} catch (InterruptedException e) {
+												// TODO Auto-generated catch block
+												e.printStackTrace();
+											}
 			    		                	//System.out.println("Receive: Data Packet Received");
 			    		                } else {
 			    		                	System.out.println("Receive: Data Packet out of window" + startWindow + " " + seq);
@@ -644,7 +654,6 @@ public class RTP{
 			    		                }
 			    		            } else if(startWindow > seq) {
 			    		            	System.out.println("Receive: Duplicate Data Packet " + startWindow + " " + seq);
-			    	            		continue;
 			    		            }
 			    	        		
 			    	        		//calculate the dynamic receiver's window
