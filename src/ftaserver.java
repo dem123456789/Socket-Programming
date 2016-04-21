@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ftaserver {
 
-	private static int timeout = 10000;
+	private static int timeout = 2000;
 	private static ConcurrentHashMap<InetSocketAddress, String> postfilenames = new ConcurrentHashMap<InetSocketAddress, String>();
 	
 	public static void main(String[] args) throws IOException {
@@ -49,7 +49,7 @@ public class ftaserver {
 							InetAddress destIPaddress = socketAddress.getAddress();
 							int destinationPort = socketAddress.getPort();
 							ArrayList<Object> windowConnection = connections.get(socketAddress);
-							AtomicInteger seq = (AtomicInteger) windowConnection.get(11);
+							AtomicInteger seq = (AtomicInteger) windowConnection.get(13);
 							ArrayBlockingQueue<DatagramPacket> data_pkt = (ArrayBlockingQueue<DatagramPacket>) output_info.get(1);
 							DatagramPacket initial = data_pkt.peek();
 							RTPPacket initial_rtp = rtp.UDP2RTP(initial);
@@ -96,7 +96,7 @@ public class ftaserver {
 							} else {
 								//System.out.println("Wrong command: " + command);
 							}
-							windowConnection.set(11,seq);
+							windowConnection.set(13,seq);
 						}
 						
 				}

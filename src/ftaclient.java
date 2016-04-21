@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ftaclient {
 
-	private static int timeout = 10000;
+	private static int timeout = 2000;
 	private static int seq = 0;
 	public static void main(String[] args) throws Exception {
 		Scanner reader = new Scanner(System.in);  // Reading from System.in
@@ -22,6 +22,7 @@ public class ftaclient {
 		String in = reader.nextLine(); // Scans the next token of the input as an int.
 		//String in = "localhost:8222 5000";
 		//String in = "130.207.107.13:8222 5000";
+		//String in = "130.207.107.17:8222 5000";
 		String[] arguments = in.split(" ");					
 		//arguments = new String[]{"localhost:8190", "5000", "903076259", "first_name", "last_name"};
 		if(arguments.length == 0){
@@ -105,7 +106,7 @@ public class ftaclient {
 								System.out.println(data_pkt.size());
 								FileOutputStream fos = new FileOutputStream("get_" + getfilename);
 								for(DatagramPacket pkt : data_pkt) {
-									//System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
+									System.out.println(rtp.UDP2RTP(pkt).getHeader().getSequenceNumber());
 									RTPPacket rtppacket = rtp.UDP2RTP(pkt);
 									fos.write(rtppacket.getData());
 								}
