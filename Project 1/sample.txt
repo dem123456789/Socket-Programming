@@ -1,0 +1,84 @@
+_____________________________UDP Python__________________________
+
+$ python dbclientUDP.py 127.0.0.1:1100 903084336 gpa adf first_name
+Host name: 127.0.0.1
+Port number: 1100
+sent message: 903084336,gpa,adf,first_name
+From server: gpa: 3.545455, adf: invalid, first_name: Stephen
+
+
+__TIMEOUT__
+
+$ python dbclientUDP.py 127.0.0.1:1100 903084336 gpa adf first_name
+Host name: 127.0.0.1
+Port number: 1100
+sent message: 903084336,gpa,adf,first_name
+The server has not answered in the last two seconds.
+retrying...
+The server has not answered in the last two seconds.
+retrying...
+The server has not answered in the last two seconds.
+retrying...
+Timeout after 4 trials
+
+
+__SERVER NOT UP__
+
+$ python dbclientUDP.py 127.0.0.1:1100 903084336 gpa adf first_name
+Host name: 127.0.0.1
+Port number: 1100
+sent message: 903084336,gpa,adf,first_name
+Connection Reset
+
+
+
+_____________________________TCP Python__________________________
+
+$ python dbclientTCP.py 127.0.0.1:8159 903084336 gpa first_names adfasdfa
+Host name: 127.0.0.1
+Port number: 8159
+sent message: 903084336,gpa,first_names,adfasdfa
+From server: gpa: 3.545455, first_names: invalid, adfasdfa: invalid
+
+
+$ python dbclientUDP.py 127.0.0.1:8159 903077650 gpa first_name adfasdfa
+Host name: 127.0.0.1
+Port number: 8159
+sent message: 903077650,gpa,first_name,adfasdfa
+From server: gpa: 3.446154, first_name: Joe, adfasdfa: invalid
+
+__SERVER NOT UP__
+$ python dbclientTCP.py 127.0.0.1:1100 903084336 gpa adf first_name
+Connection Refused
+
+
+_____________________________TCP Java__________________________
+
+$ java dbclientTCP 127.0.0.1:1100 903084336 gpa
+Host name:127.0.0.1
+Port number:1100
+From server: gpa: 3.545455
+
+$ java dbclientTCP 127.0.0.1:1100 903084336 gpa adf name
+Host name:127.0.0.1
+Port number:1100
+From server: gpa: 3.545455, adf: invalid, name: invalid
+
+__SERVER NOT UP__
+$ java dbclientTCP 127.0.0.1:1100
+Connection Reset
+
+
+__BUG__
+$ java dbclientTCP 127.0.0.1:1100
+Host name:127.0.0.1
+Port number:1100
+No other arguments, only socket created
+
+$ java dbengineTCP 1100
+The server is ready to receive
+Connection Reset
+
+
+
+
